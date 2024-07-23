@@ -237,78 +237,311 @@ spinCharacter()
 local Button = AETab:CreateButton({
    Name = "Head ESP (z to toggle)",
    Callback = function()
-   -- Constants
-local ESPActive = false  -- Variable to track if ESP is active
+-- LocalPlayer refers to the player using the script
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
 
--- Function to handle head highlighting
-local function HighlightHeads()
-    if ESPActive then
-        for _, player in ipairs(game.Players:GetPlayers()) do
-            -- Skip the local player
-            if player ~= game.Players.LocalPlayer then
-                -- Get player's character
-                local character = player.Character
-                if character then
-                    -- Get player's head
-                    local head = character:FindFirstChild("Head")
-                    if head then
-                        -- Check if head already has a highlight
-                        local existingHighlight = head:FindFirstChild("HeadHighlight")
-                        if not existingHighlight then
-                            -- Create a highlight effect
-                            local highlight = Instance.new("BoxHandleAdornment")
-                            highlight.Name = "HeadHighlight"
-                            highlight.Size = head.Size * 1.1  -- Slightly bigger than the head
-                            highlight.Adornee = head
-                            highlight.ZIndex = 1
-                            highlight.AlwaysOnTop = true
-                            highlight.Transparency = 0.5
-                            -- Set color based on team
-                            if player.Team == game.Players.LocalPlayer.Team then
-                                highlight.Color3 = Color3.new(0, 1, 0)  -- Green for same team
-                            else
-                                highlight.Color3 = Color3.new(1, 0, 0)  -- Red for different team
-                            end
-                            highlight.Parent = head
-                        end
-                    end
-                end
-            end
-        end
-    else
-        -- Remove all existing highlights if ESP is toggled off
-        for _, player in ipairs(game.Players:GetPlayers()) do
-            local character = player.Character
-            if character then
-                local head = character:FindFirstChild("Head")
-                if head then
-                    local existingHighlight = head:FindFirstChild("HeadHighlight")
-                    if existingHighlight then
-                        existingHighlight:Destroy()
-                    end
-                end
-            end
+-- Function to change a player's character color to bright red
+local function changeColorToRed(character)
+    for _, part in pairs(character:GetChildren()) do
+        if part:IsA("BasePart") then
+            part.BrickColor = BrickColor.new("Bright red") -- Change the part's color to bright red
         end
     end
 end
 
--- Function to toggle ESP
-local function ToggleESP()
-    ESPActive = not ESPActive
-    if ESPActive then
-        HighlightHeads()  -- Call to activate ESP
-    else
-        HighlightHeads()  -- Call to deactivate ESP (removes highlights)
+-- Function to create a highlight for the player's character
+local function createHighlight(character)
+    -- Check if the character already has a highlight
+    if character:FindFirstChild("Highlight") then return end
+
+    -- Create a new highlight instance
+    local highlight = Instance.new("Highlight")
+    highlight.FillColor = Color3.new(1, 0, 0) -- Set highlight fill color to bright red
+    highlight.FillTransparency = 0.5 -- Set transparency for visibility through walls
+    highlight.OutlineTransparency = 0.1 -- Adjust outline transparency
+    highlight.Parent = character -- Parent the highlight to the character
+end
+
+-- Function to apply changes to all players
+local function applyChangesToPlayers()
+    for _, player in pairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer and player.Character then
+            changeColorToRed(player.Character)
+            createHighlight(player.Character)
+        end
     end
 end
 
--- Create the button to toggle ESP
-local Button = AETab:CreateButton({
-    Name = "Head ESP",
-    Callback = ToggleESP,
+-- Run the script initially
+applyChangesToPlayers()
+
+-- Connect to PlayerAdded event to apply changes to new players
+Players.PlayerAdded:Connect(function(player)
+    player.CharacterAdded:Connect(function(character)
+        changeColorToRed(character)
+        createHighlight(character)
+    end)
+end)
+
+-- Connect to CharacterAdded event for all current players
+for _, player in pairs(Players:GetPlayers()) do
+    if player.Character then
+        changeColorToRed(player.Character)
+        createHighlight(player.Character)
+    end
+    player.CharacterAdded:Connect(function(character)
+        changeColorToRed(character)
+        createHighlight(character)
+    end)
+end
+   end,
 })
 
+local Button = AETab:CreateButton({
+   Name = "Tracers",
+   Callback = function()
+   local function API_Check()
+    if Drawing == nil then
+        return "No"
+    else
+        return "Yes"
+    end
+end
 
+local Find_Required = API_Check()
+
+if Find_Required == "No" then
+    game:GetService("StarterGui"):SetCore("SendNotification",{
+        Title = "Exunys Developer";
+        Text = "Tracer script could not be loaded because your exploit is unsupported.";
+        Duration = math.huge;
+        Button1 = "OK"
+    })
+
+    return
+end
+
+local RunService = game:GetService("RunService")
+local Players = game:GetService("Players")
+local Camera = game:GetService("Workspace").CurrentCamera
+local UserInputService = game:GetService("UserInputService")
+local TestService = game:GetService("TestService")
+
+local Typing = false
+
+_G.SendNotifications = true   -- If set to true then the script would notify you frequently on any changes applied and when loaded / errored. (If a game can detect this, it is recommended to set it to false)
+_G.DefaultSettings = false   -- If set to true then the tracer script would run with default settings regardless of any changes you made.
+
+_G.TeamCheck = false   -- If set to true then the script would create tracers only for the enemy team members.
+
+--[!]-- ONLY ONE OF THESE VALUES SHOULD BE SET TO TRUE TO NOT ERROR THE SCRIPT --[!]--
+
+_G.FromMouse = false   -- If set to true, the tracers will come from the position of your mouse curson on your screen.
+_G.FromCenter = false   -- If set to true, the tracers will come from the center of your screen.
+_G.FromBottom = true   -- If set to true, the tracers will come from the bottom of your screen.
+
+_G.TracersVisible = true   -- If set to true then the tracers will be visible and vice versa.
+_G.TracerColor = Color3.fromRGB(255, 80, 10)   -- The color that the tracers would appear as.
+_G.TracerThickness = 1   -- The thickness of the tracers.
+_G.TracerTransparency = 0.7   -- The transparency of the tracers.
+
+_G.ModeSkipKey = Enum.KeyCode.E   -- The key that changes between modes that indicate where will the tracers come from.
+_G.DisableKey = Enum.KeyCode.Q   -- The key that disables / enables the tracers.
+
+local function CreateTracers()
+    for _, v in next, Players:GetPlayers() do
+        if v.Name ~= game.Players.LocalPlayer.Name then
+            local TracerLine = Drawing.new("Line")
+    
+            RunService.RenderStepped:Connect(function()
+                if workspace:FindFirstChild(v.Name) ~= nil and workspace[v.Name]:FindFirstChild("HumanoidRootPart") ~= nil then
+                    local HumanoidRootPart_Position, HumanoidRootPart_Size = workspace[v.Name].HumanoidRootPart.CFrame, workspace[v.Name].HumanoidRootPart.Size * 1
+                    local Vector, OnScreen = Camera:WorldToViewportPoint(HumanoidRootPart_Position * CFrame.new(0, -HumanoidRootPart_Size.Y, 0).p)
+                    
+                    TracerLine.Thickness = _G.TracerThickness
+                    TracerLine.Transparency = _G.TracerTransparency
+                    TracerLine.Color = _G.TracerColor
+
+                    if _G.FromMouse == true and _G.FromCenter == false and _G.FromBottom == false then
+                        TracerLine.From = Vector2.new(UserInputService:GetMouseLocation().X, UserInputService:GetMouseLocation().Y)
+                    elseif _G.FromMouse == false and _G.FromCenter == true and _G.FromBottom == false then
+                        TracerLine.From = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
+                    elseif _G.FromMouse == false and _G.FromCenter == false and _G.FromBottom == true then
+                        TracerLine.From = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y)
+                    end
+
+                    if OnScreen == true  then
+                        TracerLine.To = Vector2.new(Vector.X, Vector.Y)
+                        if _G.TeamCheck == true then 
+                            if Players.LocalPlayer.Team ~= v.Team then
+                                TracerLine.Visible = _G.TracersVisible
+                            else
+                                TracerLine.Visible = false
+                            end
+                        else
+                            TracerLine.Visible = _G.TracersVisible
+                        end
+                    else
+                        TracerLine.Visible = false
+                    end
+                else
+                    TracerLine.Visible = false
+                end
+            end)
+
+            Players.PlayerRemoving:Connect(function()
+                TracerLine.Visible = false
+            end)
+        end
+    end
+
+    Players.PlayerAdded:Connect(function(Player)
+        Player.CharacterAdded:Connect(function(v)
+            if v.Name ~= game.Players.LocalPlayer.Name then
+                local TracerLine = Drawing.new("Line")
+        
+                RunService.RenderStepped:Connect(function()
+                    if workspace:FindFirstChild(v.Name) ~= nil and workspace[v.Name]:FindFirstChild("HumanoidRootPart") ~= nil then
+                        local HumanoidRootPart_Position, HumanoidRootPart_Size = workspace[v.Name].HumanoidRootPart.CFrame, workspace[v.Name].HumanoidRootPart.Size * 1
+                    	local Vector, OnScreen = Camera:WorldToViewportPoint(HumanoidRootPart_Position * CFrame.new(0, -HumanoidRootPart_Size.Y, 0).p)
+                        
+                        TracerLine.Thickness = _G.TracerThickness
+                        TracerLine.Transparency = _G.TracerTransparency
+                        TracerLine.Color = _G.TracerColor
+
+                        if _G.FromMouse == true and _G.FromCenter == false and _G.FromBottom == false then
+                            TracerLine.From = Vector2.new(UserInputService:GetMouseLocation().X, UserInputService:GetMouseLocation().Y)
+                        elseif _G.FromMouse == false and _G.FromCenter == true and _G.FromBottom == false then
+                            TracerLine.From = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
+                        elseif _G.FromMouse == false and _G.FromCenter == false and _G.FromBottom == true then
+                            TracerLine.From = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y)
+                        end
+
+                        if OnScreen == true  then
+                            TracerLine.To = Vector2.new(Vector.X, Vector.Y)
+                            if _G.TeamCheck == true then 
+                                if Players.LocalPlayer.Team ~= Player.Team then
+                                    TracerLine.Visible = _G.TracersVisible
+                                else
+                                    TracerLine.Visible = false
+                                end
+                            else
+                                TracerLine.Visible = _G.TracersVisible
+                            end
+                        else
+                            TracerLine.Visible = false
+                        end
+                    else
+                        TracerLine.Visible = false
+                    end
+                end)
+
+                Players.PlayerRemoving:Connect(function()
+                    TracerLine.Visible = false
+                end)
+            end
+        end)
+    end)
+end
+
+UserInputService.TextBoxFocused:Connect(function()
+    Typing = true
+end)
+
+UserInputService.TextBoxFocusReleased:Connect(function()
+    Typing = false
+end)
+
+UserInputService.InputBegan:Connect(function(Input)
+    if Input.KeyCode == _G.ModeSkipKey and Typing == false then
+        if _G.FromMouse == true and _G.FromCenter == false and _G.FromBottom == false and _G.TracersVisible == true then
+            _G.FromCenter = false
+            _G.FromBottom = true
+            _G.FromMouse = false
+
+            if _G.SendNotifications == true then
+                game:GetService("StarterGui"):SetCore("SendNotification",{
+                    Title = "Exunys Developer";
+                    Text = "Tracers will be now coming from the bottom of your screen (Mode 1)";
+                    Duration = 5;
+                })
+            end
+        elseif _G.FromMouse == false and _G.FromCenter == false and _G.FromBottom == true and _G.TracersVisible == true then
+            _G.FromCenter = true
+            _G.FromBottom = false
+            _G.FromMouse = false
+
+            if _G.SendNotifications == true then
+                game:GetService("StarterGui"):SetCore("SendNotification",{
+                    Title = "Exunys Developer";
+                    Text = "Tracers will be now coming from the center of your screen (Mode 2)";
+                    Duration = 5;
+                })
+            end
+        elseif _G.FromMouse == false and _G.FromCenter == true and _G.FromBottom == false and _G.TracersVisible == true then
+            _G.FromCenter = false
+            _G.FromBottom = false
+            _G.FromMouse = true
+
+            if _G.SendNotifications == true then
+                game:GetService("StarterGui"):SetCore("SendNotification",{
+                    Title = "Exunys Developer";
+                    Text = "Tracers will be now coming from the position of your mouse cursor on your screen (Mode 3)";
+                    Duration = 5;
+                })
+            end
+        end
+    elseif Input.KeyCode == _G.DisableKey and Typing == false then
+        _G.TracersVisible = not _G.TracersVisible
+        
+        if _G.SendNotifications == true then
+            game:GetService("StarterGui"):SetCore("SendNotification",{
+                Title = "Exunys Developer";
+                Text = "The tracers' visibility is now set to "..tostring(_G.TracersVisible)..".";
+                Duration = 5;
+            })
+        end
+    end
+end)
+
+if _G.DefaultSettings == true then
+    _G.TeamCheck = false
+    _G.FromMouse = false
+    _G.FromCenter = false
+    _G.FromBottom = true
+    _G.TracersVisible = true
+    _G.TracerColor = Color3.fromRGB(40, 90, 255)
+    _G.TracerThickness = 1
+    _G.TracerTransparency = 0.5
+    _G.ModeSkipKey = Enum.KeyCode.E
+    _G.DisableKey = Enum.KeyCode.Q
+end
+
+local Success, Errored = pcall(function()
+    CreateTracers()
+end)
+
+if Success and not Errored then
+    if _G.SendNotifications == true then
+        game:GetService("StarterGui"):SetCore("SendNotification",{
+            Title = "Exunys Developer";
+            Text = "Tracer script has successfully loaded.";
+            Duration = 5;
+        })
+    end
+elseif Errored and not Success then
+    if _G.SendNotifications == true then
+        game:GetService("StarterGui"):SetCore("SendNotification",{
+            Title = "Exunys Developer";
+            Text = "Tracer script has errored while loading, please check the developer console! (F9)";
+            Duration = 5;
+        })
+    end
+    TestService:Message("The tracer script has errored, please notify Exunys with the following information :")
+    warn(Errored)
+    print("!! IF THE ERROR IS A FALSE POSITIVE (says that a player cannot be found) THEN DO NOT BOTHER !!")
+end
    end,
 })
 
