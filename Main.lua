@@ -235,7 +235,7 @@ spinCharacter()
 })
 
 local Button = AETab:CreateButton({
-   Name = "Head ESP (z to toggle)",
+   Name = "FULL BODY ESP",
    Callback = function()
 -- LocalPlayer refers to the player using the script
 local Players = game:GetService("Players")
